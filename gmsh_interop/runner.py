@@ -126,7 +126,7 @@ class GmshRunner(object):
             extension="geo", gmsh_executable="gmsh",
             output_file_name="output.msh",
             target_unit=None,
-            save_tmp_files_in=None):
+            save_tmp_files_in=None, overwrite_tmp_files=None):
         if isinstance(source, str):
             from warnings import warn
             warn("passing a string as 'source' is deprecated--use "
@@ -149,6 +149,7 @@ class GmshRunner(object):
         self.gmsh_executable = gmsh_executable
         self.output_file_name = output_file_name
         self.save_tmp_files_in = save_tmp_files_in
+        self.overwrite_tmp_files = overwrite_tmp_files
         self.target_unit = target_unit.upper()
 
         if self.dimensions not in [1, 2, 3, None]:
@@ -281,14 +282,23 @@ class GmshRunner(object):
             self.output_file = open(output_file_name, "r")
 
             if self.save_tmp_files_in:
-                import shutil, errno
+                import shutil
+                import errno
                 try:
                     shutil.copytree(working_dir, self.save_tmp_files_in)
-                except FileExistsError as exc:
-                    import select, sys
+                except FileExistsError:
+                    import select
+                    import sys
                     print("%s exists! Overwrite? (Y/N, will default to Y in 10sec)."
                             % self.save_tmp_files_in)
-                    decision = None
+
+                    if self.overwrite_tmp_files is None:
+                        decision = None
+                    elif self.overwrite_tmp_files:
+                        decision = 1
+                    else:
+                        decision = 0
+
                     while not decision:
                         i, o, e = select.select([sys.stdin], [], [], 10)
                         if i:
@@ -301,18 +311,21 @@ class GmshRunner(object):
                                 logger.info("Overwriting.")
                             else:
                                 print("Illegal input %s, please retry." % i)
+
                     if decision == 0:
                         pass
                     else:
                         assert decision == 1
                         shutil.rmtree(self.save_tmp_files_in)
                         shutil.copytree(working_dir, self.save_tmp_files_in)
+
                 except OSError as exc:
                     if exc.errno == errno.ENOTDIR:
                         shutil.copy(output_file_name,
                                     '/'.join([self.save_tmp_files_in,
                                               self.output_file_name]))
-                    else: raise
+                    else:
+                        raise
 
             self.temp_dir_mgr = temp_dir_mgr
             return self
