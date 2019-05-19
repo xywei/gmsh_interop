@@ -289,8 +289,6 @@ class GmshRunner(object):
                 except FileExistsError:
                     import select
                     import sys
-                    print("%s exists! Overwrite? (Y/N, will default to Y in 10sec)."
-                            % self.save_tmp_files_in)
 
                     if self.overwrite_tmp_files is None:
                         decision = None
@@ -300,6 +298,8 @@ class GmshRunner(object):
                         decision = 0
 
                     while not decision:
+                        print("%s exists! Overwrite? (Y/N, will default to Y in 10sec)."
+                                % self.save_tmp_files_in)
                         i, o, e = select.select([sys.stdin], [], [], 10)
                         if i:
                             resp = sys.stdin.readline().strip()
